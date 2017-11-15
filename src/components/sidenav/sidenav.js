@@ -10,7 +10,7 @@ angular
     'material.core',
     'material.components.backdrop'
   ])
-  .factory('$mdSidenav', SidenavService )
+  .factory('$mdSidenav', SidenavService)
   .directive('mdSidenav', SidenavDirective)
   .directive('mdSidenavFocus', SidenavFocusDirective)
   .controller('$mdSidenavController', SidenavController);
@@ -71,12 +71,12 @@ angular
  * $mdSidenav(componentId).isLockedOpen();
  * </hljs>
  */
-function SidenavService($mdComponentRegistry, $mdUtil, $q, $log) {
+function SidenavService($mdComponentRegistry, $mdUtil, $q, $log, $timeout) {
   var errorMsg = "SideNav '{0}' is not available! Did you use md-component-id='{0}'?";
   var service = {
-        find    : findInstance,     //  sync  - returns proxy API
-        waitFor : waitForInstance   //  async - returns promise
-      };
+    find: findInstance,     //  sync  - returns proxy API
+    waitFor: waitForInstance   //  async - returns promise
+  };
 
   /**
    * Service API that supports three (3) usages:
@@ -86,13 +86,13 @@ function SidenavService($mdComponentRegistry, $mdUtil, $q, $log) {
    *    left.toggle();
    *   });
    */
-  return function(handle, enableWait) {
-    if ( angular.isUndefined(handle) ) return service;
+  return function (handle, enableWait) {
+    if (angular.isUndefined(handle)) return service;
 
     var shouldWait = enableWait === true;
     var instance = service.find(handle, shouldWait);
-    return  !instance && shouldWait ? service.waitFor(handle) :
-            !instance && angular.isUndefined(enableWait) ? addLegacyAPI(service, handle) : instance;
+    return !instance && shouldWait ? service.waitFor(handle) :
+      !instance && angular.isUndefined(enableWait) ? addLegacyAPI(service, handle) : instance;
   };
 
   /**
@@ -100,50 +100,50 @@ function SidenavService($mdComponentRegistry, $mdUtil, $q, $log) {
    * that include `rejected promise APIs`
    */
   function addLegacyAPI(service, handle) {
-      var falseFn  = function() { return false; };
-      var rejectFn = function() {
-            return $q.when($mdUtil.supplant(errorMsg, [handle || ""]));
-          };
+    var falseFn = function () { return false; };
+    var rejectFn = function () {
+      return $q.when($mdUtil.supplant(errorMsg, [handle || ""]));
+    };
 
-      return angular.extend({
-        isLockedOpen : falseFn,
-        isOpen       : falseFn,
-        toggle       : rejectFn,
-        open         : rejectFn,
-        close        : rejectFn,
-        onClose      : angular.noop,
-        then : function(callback) {
-          return waitForInstance(handle)
-            .then(callback || angular.noop);
-        }
-       }, service);
-    }
-    /**
-     * Synchronously lookup the controller instance for the specified sidNav instance which has been
-     * registered with the markup `md-component-id`
-     */
-    function findInstance(handle, shouldWait) {
-      var instance = $mdComponentRegistry.get(handle);
-
-      if (!instance && !shouldWait) {
-
-        // Report missing instance
-        $log.error( $mdUtil.supplant(errorMsg, [handle || ""]) );
-
-        // The component has not registered itself... most like NOT yet created
-        // return null to indicate that the Sidenav is not in the DOM
-        return undefined;
+    return angular.extend({
+      isLockedOpen: falseFn,
+      isOpen: falseFn,
+      toggle: rejectFn,
+      open: rejectFn,
+      close: rejectFn,
+      onClose: angular.noop,
+      then: function (callback) {
+        return waitForInstance(handle)
+          .then(callback || angular.noop);
       }
-      return instance;
-    }
+    }, service);
+  }
+  /**
+   * Synchronously lookup the controller instance for the specified sidNav instance which has been
+   * registered with the markup `md-component-id`
+   */
+  function findInstance(handle, shouldWait) {
+    var instance = $mdComponentRegistry.get(handle);
 
-    /**
-     * Asynchronously wait for the component instantiation,
-     * Deferred lookup of component instance using $component registry
-     */
-    function waitForInstance(handle) {
-      return $mdComponentRegistry.when(handle).catch($log.error);
+    if (!instance && !shouldWait) {
+
+      // Report missing instance
+      $log.error($mdUtil.supplant(errorMsg, [handle || ""]));
+
+      // The component has not registered itself... most like NOT yet created
+      // return null to indicate that the Sidenav is not in the DOM
+      return undefined;
     }
+    return instance;
+  }
+
+  /**
+   * Asynchronously wait for the component instantiation,
+   * Deferred lookup of component instance using $component registry
+   */
+  function waitForInstance(handle) {
+    return $mdComponentRegistry.when(handle).catch($log.error);
+  }
 }
 /**
  * @ngdoc directive
@@ -172,7 +172,7 @@ function SidenavFocusDirective() {
   return {
     restrict: 'A',
     require: '^mdSidenav',
-    link: function(scope, element, attr, sidenavCtrl) {
+    link: function (scope, element, attr, sidenavCtrl) {
       // @see $mdUtil.findFocusTarget(...)
     }
   };
@@ -253,7 +253,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       isOpen: '=?mdIsOpen'
     },
     controller: '$mdSidenavController',
-    compile: function(element) {
+    compile: function (element) {
       element.addClass('md-closed').attr('tabIndex', '-1');
       return postLink;
     }
@@ -272,9 +272,9 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
     var promise = $q.when(true);
     var isLockedOpenParsed = $parse(attr.mdIsLockedOpen);
     var ngWindow = angular.element($window);
-    var isLocked = function() {
+    var isLocked = function () {
       return isLockedOpenParsed(scope.$parent, {
-        $media: function(arg) {
+        $media: function (arg) {
           $log.warn("$media is deprecated for is-locked-open. Use $mdMedia instead.");
           return $mdMedia(arg);
         },
@@ -307,14 +307,14 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
 
     // The backdrop should inherit the sidenavs theme,
     // because the backdrop will take its parent theme by default.
-    if ( backdrop ) $mdTheming.inherit(backdrop, element);
+    if (backdrop) $mdTheming.inherit(backdrop, element);
 
-    element.on('$destroy', function() {
+    element.on('$destroy', function () {
       backdrop && backdrop.remove();
       sidenavCtrl.destroy();
     });
 
-    scope.$on('$destroy', function(){
+    scope.$on('$destroy', function () {
       backdrop && backdrop.remove();
     });
 
@@ -349,7 +349,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
      */
     function updateIsOpen(isOpen) {
       // Support deprecated md-sidenav-focus attribute as fallback
-      var focusEl = $mdUtil.findFocusTarget(element) || $mdUtil.findFocusTarget(element,'[md-sidenav-focus]') || element;
+      var focusEl = $mdUtil.findFocusTarget(element) || $mdUtil.findFocusTarget(element, '[md-sidenav-focus]') || element;
       var parent = element.parent();
 
       parent[isOpen ? 'on' : 'off']('keydown', onKeyDown);
@@ -357,7 +357,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
 
       var restorePositioning = updateContainerPositions(parent, isOpen);
 
-      if ( isOpen ) {
+      if (isOpen) {
         // Capture upon opening..
         triggeringElement = $document[0].activeElement;
         triggeringInteractionType = $mdInteraction.getLastInteractionType();
@@ -367,12 +367,12 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
 
       return promise = $q.all([
         isOpen && backdrop ? $animate.enter(backdrop, parent) : backdrop ?
-                             $animate.leave(backdrop) : $q.when(true),
+          $animate.leave(backdrop) : $q.when(true),
         $animate[isOpen ? 'removeClass' : 'addClass'](element, 'md-closed')
-      ]).then(function() {
+      ]).then(function () {
         // Perform focus when animations are ALL done...
         if (scope.isOpen) {
-          $$rAF(function() {
+          $$rAF(function () {
             // Notifies child components that the sidenav was opened. Should wait
             // a frame in order to allow for the element height to be computed.
             ngWindow.triggerHandler('resize');
@@ -414,7 +414,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       // When the sidenav is closing and we have previous defined container styles,
       // then we return a restore function, which resets the sidenav and backdrop.
       if (!willOpen && previousContainerStyles) {
-        return function() {
+        return function () {
           drawerEl.style.top = previousContainerStyles.top;
           drawerEl.style.bottom = previousContainerStyles.bottom;
           drawerEl.style.height = previousContainerStyles.height;
@@ -432,7 +432,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
      * Prevent parent scrolling (when the SideNav is open)
      */
     function disableParentScroll(disabled) {
-      if ( disabled && !lastParentOverFlow ) {
+      if (disabled && !lastParentOverFlow) {
         lastParentOverFlow = disableScrollTarget.css('overflow');
         disableScrollTarget.css('overflow', 'hidden');
       } else if (angular.isDefined(lastParentOverFlow)) {
@@ -444,13 +444,17 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
     function enableDragging() {
       $mdGesture.register(element, 'drag', { horizontal: true });
 
+      var container = attr.mdContentSelector ? angular.element(attr.mdContentSelector) : element.parent();
+
       element
         .on('$md.dragstart', onDragStart)
         .on('$md.drag', onDrag)
         .on('$md.dragend', onDragEnd);
 
-      var style = getComputedStyle(element[0]);
-      var sidenavWidth = parseInt(style.width);
+      var sidenavWidth = function () {
+        return element[0].getBoundingClientRect().width;
+      }
+
       var isRightSidenav = element.hasClass('md-sidenav-right');
       var accelerationBound = 6;
 
@@ -460,7 +464,140 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       var lastDistance = 0;
       var isQuickDrag = false;
 
+      function getMouseCoords(e, element) {
+        if (!e.clientX && !e.touches) {
+          e = e.originalEvent;
+        }
+
+        var rect = (element || e.currentTarget).getBoundingClientRect();
+
+        return {
+          offsetX: (e.clientX || e.touches[0].clientX) - rect.left,
+          offsetY: (e.clientY || e.touches[0].clientX) - rect.top
+        };
+      }
+
+      var draggingStarted;
+      var touchStarted;
+
+      var OFFSET_TRESHOLD = 25;
+      var DELAY = 100;
+      var LEAN_PERCENTAGE = 5;
+
+      var offsetX;
+      var touchStartX;
+      var touchStartY;
+      var touchMoveX;
+      var touchMoveY;
+
+      var timeout;
+
+      var getEdgeDistance = function (offsetX) {
+        return isRightSidenav ? container[0].getBoundingClientRect().width - offsetX : offsetX;
+      }
+
+      function onMouseMove(ev) {
+        var startDistance = LEAN_PERCENTAGE * sidenavWidth() / 100;
+        ev.preventDefault();
+
+        offsetX = offsetX || getMouseCoords(ev, container[0]).offsetX;
+
+        if (isRightSidenav) {
+          ev.pointer = { distanceX: -startDistance + sidenavWidth() - (getEdgeDistance(getMouseCoords(ev, container[0]).offsetX) - getEdgeDistance(offsetX)) };
+        } else {
+          ev.pointer = { distanceX: startDistance + (getEdgeDistance(getMouseCoords(ev, container[0]).offsetX) - getEdgeDistance(offsetX)) - sidenavWidth() };
+        }
+
+        onDrag(ev);
+      }
+
+      function scrollDetector(ev) {
+        touchMoveX = getMouseCoords(ev, container[0]).offsetX;
+        touchMoveY = getMouseCoords(ev, container[0]).offsetY;
+      }
+
+      function onMouseDown(evt) {
+
+        if (draggingStarted || touchStarted) {
+          return;
+        }
+
+        touchStarted = true;
+
+        touchStartX = getMouseCoords(evt, container[0]).offsetX;
+        touchStartY = getMouseCoords(evt, container[0]).offsetY;
+        touchMoveX = touchStartX;
+        touchMoveY = touchStartY;
+
+        offsetX = getMouseCoords(evt, container[0]).offsetX;
+
+        var edgeDistance = getEdgeDistance(offsetX);
+
+        container.on('touchmove', scrollDetector);
+
+        if (edgeDistance < OFFSET_TRESHOLD) {
+          timeout = $timeout(function () {
+
+            if (!touchStarted) {
+              return;
+            }
+
+            var isScrolling = Math.abs(touchMoveY - touchStartY) > Math.abs(touchMoveX - touchStartX);
+            if (isScrolling) {
+              touchStarted = false;
+              return;
+            }
+
+            draggingStarted = true;
+
+            element.removeClass('md-closed');
+            $animate.enter(backdrop, element.parent())
+              .then(function () {
+                $animate.addClass(backdrop, 'ng-enter-active');
+              })
+
+            dragPercentage = 100 - LEAN_PERCENTAGE;
+
+            element.css($mdConstant.CSS.TRANSFORM, 'translate3d(-' + (isRightSidenav ? 100 - dragPercentage : dragPercentage) + '%,0,0)');
+
+            onDragStart();
+            lastOpenState = false;
+
+            container.on('mousemove touchmove', onMouseMove);
+          }, DELAY);
+        }
+
+        function touchEnd(ev) {
+          touchStarted = false;
+          $timeout.cancel(timeout);
+
+          container.off('touchmove', scrollDetector);
+          container.off('mousemove touchmove', onMouseMove);
+
+          if (draggingStarted) {
+            onDragEnd();
+
+            ev.preventDefault();
+
+            draggingStarted = false;
+          }
+
+          container.off('mouseup touchend', touchEnd);
+          element.off('mouseup touchend', touchEnd);
+        };
+
+        container.one('mouseup touchend', touchEnd);
+        element.one('mouseup touchend', touchEnd);
+      }
+
+      container.on('mousedown touchstart', onMouseDown);
+
       function onDragStart() {
+        disableParentScroll(true);
+
+        element.css('user-select', 'none');
+        element.parent().css('user-select', 'none');
+
         if (element.hasClass('md-locked-open')) {
           dragCancelled = true;
         } else {
@@ -478,12 +615,12 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
           // identify it as a quick drag.
           isQuickDrag = isRightSidenav ? distance <= -accelerationBound : distance >= accelerationBound;
         } else if (isRightSidenav && lastDistance > ev.pointer.distanceX ||
-                   !isRightSidenav && lastDistance < ev.pointer.distanceX) {
+          !isRightSidenav && lastDistance < ev.pointer.distanceX) {
           // When the users drags the sidenav backward, then we can reset the quick drag state.
           isQuickDrag = false;
         }
 
-        dragPercentage = Math.round((ev.pointer.distanceX / sidenavWidth) * 100);
+        dragPercentage = Math.round((ev.pointer.distanceX / sidenavWidth()) * 100);
         if (!isRightSidenav) dragPercentage = 0 - dragPercentage;
 
         if (dragPercentage > 100) dragPercentage = 100;
@@ -494,6 +631,11 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       }
 
       function onDragEnd() {
+        disableParentScroll(false);
+
+        element.css('user-select', '');
+        element.parent().css('user-select', '');
+
         if (dragCancelled) {
           dragCancelled = false;
           return;
@@ -508,7 +650,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
         var endTranslate = shouldClose ? isRightSidenav ? 0 : -100 : isRightSidenav ? -100 : 0;
 
         element.css($mdConstant.CSS.TRANSITION_DURATION, animationTime + "ms");
-        element.css($mdConstant.CSS.TRANSFORM, 'translate3d(' + endTranslate +  '%,0,0)');
+        element.css($mdConstant.CSS.TRANSFORM, 'translate3d(' + endTranslate + '%,0,0)');
 
         // Reset drag
         lastDistance = 0;
@@ -528,10 +670,10 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
             $animate.enter(backdrop, element.parent());
           }
 
-          element.removeClass('_md-closed');
+          element.removeClass('md-closed');
         } else {
           if (backdrop) $animate.leave(backdrop);
-          element.addClass('_md-closed');
+          element.addClass('md-closed');
         }
       }
     }
@@ -543,23 +685,23 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
      * @param isOpen
      * @returns {*}
      */
-    function toggleOpen( isOpen ) {
-      if (scope.isOpen == isOpen ) {
+    function toggleOpen(isOpen) {
+      if (scope.isOpen == isOpen) {
 
         return $q.when(true);
 
       } else {
         if (scope.isOpen && sidenavCtrl.onCloseCb) sidenavCtrl.onCloseCb();
 
-        return $q(function(resolve){
+        return $q(function (resolve) {
           // Toggle value to force an async `updateIsOpen()` to run
           scope.isOpen = isOpen;
 
-          $mdUtil.nextTick(function() {
+          $mdUtil.nextTick(function () {
             // When the current `updateIsOpen()` animation finishes
-            promise.then(function(result) {
+            promise.then(function (result) {
 
-              if ( !scope.isOpen && triggeringElement && triggeringInteractionType === 'keyboard') {
+              if (!scope.isOpen && triggeringElement && triggeringInteractionType === 'keyboard') {
                 // reset focus to originating element (if available) upon close
                 triggeringElement.focus();
                 triggeringElement = null;
@@ -610,8 +752,8 @@ function SidenavController($scope, $attrs, $mdComponentRegistry, $q, $interpolat
   // Use Default internal method until overridden by directive postLink
 
   // Synchronous getters
-  self.isOpen = function() { return !!$scope.isOpen; };
-  self.isLockedOpen = function() { return !!$scope.isLockedOpen; };
+  self.isOpen = function () { return !!$scope.isOpen; };
+  self.isLockedOpen = function () { return !!$scope.isLockedOpen; };
 
   // Synchronous setters
   self.onClose = function (callback) {
@@ -620,10 +762,10 @@ function SidenavController($scope, $attrs, $mdComponentRegistry, $q, $interpolat
   };
 
   // Async actions
-  self.open   = function() { return self.$toggleOpen( true );  };
-  self.close  = function() { return self.$toggleOpen( false ); };
-  self.toggle = function() { return self.$toggleOpen( !$scope.isOpen );  };
-  self.$toggleOpen = function(value) { return $q.when($scope.isOpen = value); };
+  self.open = function () { return self.$toggleOpen(true); };
+  self.close = function () { return self.$toggleOpen(false); };
+  self.toggle = function () { return self.$toggleOpen(!$scope.isOpen); };
+  self.$toggleOpen = function (value) { return $q.when($scope.isOpen = value); };
 
   // Evaluate the component id.
   var rawId = $attrs.mdComponentId;
@@ -635,7 +777,7 @@ function SidenavController($scope, $attrs, $mdComponentRegistry, $q, $interpolat
 
   // Watch and update the component, if the id has changed.
   if (hasDataBinding) {
-    $attrs.$observe('mdComponentId', function(id) {
+    $attrs.$observe('mdComponentId', function (id) {
       if (id && id !== self.$$mdHandle) {
         self.destroy(); // `destroy` only deregisters the old component id so we can add the new one.
         self.destroy = $mdComponentRegistry.register(self, id);
