@@ -473,7 +473,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
 
         return {
           offsetX: (e.clientX || e.touches[0].clientX) - rect.left,
-          offsetY: (e.clientY || e.touches[0].clientX) - rect.top
+          offsetY: (e.clientY || e.touches[0].clientY) - rect.top
         };
       }
 
@@ -481,7 +481,8 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       var touchStarted;
 
       var OFFSET_TRESHOLD = 25;
-      var DELAY = 100;
+      var SWIPE_GESTURE_TRESHOLD = 50;
+      var DELAY = 250;
       var LEAN_PERCENTAGE = 5;
 
       var offsetX;
@@ -511,9 +512,49 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
         onDrag(ev);
       }
 
-      function scrollDetector(ev) {
+      function simpleSwipeDetector(ev) {
         touchMoveX = getMouseCoords(ev, container[0]).offsetX;
         touchMoveY = getMouseCoords(ev, container[0]).offsetY;
+
+        var isScrolling = Math.abs(touchMoveY - touchStartY) > Math.abs(touchMoveX - touchStartX);
+        if (isScrolling) {
+          touchStarted = false;
+          return;
+        }
+
+        if (touchStarted) {
+          return;
+        }
+
+        if (Math.abs(touchMoveX - touchStartX) > SWIPE_GESTURE_TRESHOLD) {
+          $timeout.cancel(timeout);
+
+          dispatchDragStart();
+        }
+      }
+
+      function dispatchDragStart() {
+
+        if (!touchStarted) {
+          return;
+        }
+
+        draggingStarted = true;
+
+        element.removeClass('md-closed');
+        $animate.enter(backdrop, element.parent())
+          .then(function () {
+            $animate.addClass(backdrop, 'ng-enter-active');
+          })
+
+        dragPercentage = 100 - LEAN_PERCENTAGE;
+
+        element.css($mdConstant.CSS.TRANSFORM, 'translate3d(-' + (isRightSidenav ? 100 - dragPercentage : dragPercentage) + '%,0,0)');
+
+        onDragStart();
+        lastOpenState = false;
+
+        container.on('mousemove touchmove', onMouseMove);
       }
 
       function onMouseDown(evt) {
@@ -521,8 +562,6 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
         if (draggingStarted || touchStarted) {
           return;
         }
-
-        touchStarted = true;
 
         touchStartX = getMouseCoords(evt, container[0]).offsetX;
         touchStartY = getMouseCoords(evt, container[0]).offsetY;
@@ -533,45 +572,22 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
 
         var edgeDistance = getEdgeDistance(offsetX);
 
-        container.on('touchmove', scrollDetector);
+        container.on('touchmove', simpleSwipeDetector);
 
         if (edgeDistance < OFFSET_TRESHOLD) {
-          timeout = $timeout(function () {
+          if (scope.isOpen || scope.isLockedOpen) {
+            return;
+          }
 
-            if (!touchStarted) {
-              return;
-            }
-
-            var isScrolling = Math.abs(touchMoveY - touchStartY) > Math.abs(touchMoveX - touchStartX);
-            if (isScrolling) {
-              touchStarted = false;
-              return;
-            }
-
-            draggingStarted = true;
-
-            element.removeClass('md-closed');
-            $animate.enter(backdrop, element.parent())
-              .then(function () {
-                $animate.addClass(backdrop, 'ng-enter-active');
-              })
-
-            dragPercentage = 100 - LEAN_PERCENTAGE;
-
-            element.css($mdConstant.CSS.TRANSFORM, 'translate3d(-' + (isRightSidenav ? 100 - dragPercentage : dragPercentage) + '%,0,0)');
-
-            onDragStart();
-            lastOpenState = false;
-
-            container.on('mousemove touchmove', onMouseMove);
-          }, DELAY);
+          touchStarted = true;
+          timeout = $timeout(dispatchDragStart, DELAY);
         }
 
         function touchEnd(ev) {
           touchStarted = false;
           $timeout.cancel(timeout);
 
-          container.off('touchmove', scrollDetector);
+          container.off('touchmove', simpleSwipeDetector);
           container.off('mousemove touchmove', onMouseMove);
 
           if (draggingStarted) {
