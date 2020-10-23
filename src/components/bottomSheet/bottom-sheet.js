@@ -78,9 +78,38 @@ function MdBottomSheetDirective($mdBottomSheet) {
  *
  * });
  * </hljs>
+ *
+ * ### Custom Presets
+ * Developers are also able to create their own preset, which can be easily used without repeating
+ * their options each time.
+ *
+ * <hljs lang="js">
+ *   $mdBottomSheetProvider.addPreset('testPreset', {
+ *     options: function() {
+ *       return {
+ *         template:
+ *           '<md-bottom-sheet>' +
+ *             'This is a custom preset' +
+ *           '</md-bottom-sheet>',
+ *         controllerAs: 'bottomSheet',
+ *         bindToController: true,
+ *         clickOutsideToClose: true,
+ *         escapeToClose: true
+ *       };
+ *     }
+ *   });
+ * </hljs>
+ *
+ * After you create your preset during the config phase, you can easily access it.
+ *
+ * <hljs lang="js">
+ *   $mdBottomSheet.show(
+ *     $mdBottomSheet.testPreset()
+ *   );
+ * </hljs>
  */
 
- /**
+/**
  * @ngdoc method
  * @name $mdBottomSheet#show
  *
@@ -95,38 +124,42 @@ function MdBottomSheetDirective($mdBottomSheet) {
  * Newer versions of Angular will throw a `Possibly unhandled rejection` exception if you forget
  * this.</em>
  *
- * @param {object} options An options object, with the following properties:
+ * @param {Object} optionsOrPreset Either provide an `$mdBottomSheetPreset` defined during the
+ * config phase or an options object, with the following properties:
  *
  *   - `templateUrl` - `{string=}`: The url of an html template file that will
  *   be used as the content of the bottom sheet. Restrictions: the template must
  *   have an outer `md-bottom-sheet` element.
  *   - `template` - `{string=}`: Same as templateUrl, except this is an actual
  *   template string.
- *   - `scope` - `{object=}`: the scope to link the template / controller to. If none is specified, it will create a new child scope.
- *     This scope will be destroyed when the bottom sheet is removed unless `preserveScope` is set to true.
- *   - `preserveScope` - `{boolean=}`: whether to preserve the scope when the element is removed. Default is false
+ *   - `scope` - `{Object=}`: the scope to link the template / controller to. If none is specified,
+ *   it will create a new child scope. This scope will be destroyed when the bottom sheet is
+ *   removed unless `preserveScope` is set to true.
+ *   - `preserveScope` - `{boolean=}`: whether to preserve the scope when the element is removed.
+ *   Default is false
  *   - `controller` - `{string=}`: The controller to associate with this bottom sheet.
- *   - `locals` - `{string=}`: An object containing key/value pairs. The keys will
- *   be used as names of values to inject into the controller. For example,
- *   `locals: {three: 3}` would inject `three` into the controller with the value
- *   of 3.
+ *   - `locals` - `{string=}`: An object containing key/value pairs. The keys will be used as names
+ *   of values to inject into the controller. For example, `locals: {three: 3}` would inject
+ *   `three` into the controller with the value of 3.
  *   - `clickOutsideToClose` - `{boolean=}`: Whether the user can click outside the bottom sheet to
  *     close it. Default true.
- *   - `bindToController` - `{boolean=}`: When set to true, the locals will be bound to the controller instance.
+ *   - `bindToController` - `{boolean=}`: When set to true, the locals will be bound to the
+ *   controller instance and available in it's $onInit function.
  *   - `disableBackdrop` - `{boolean=}`: When set to true, the bottomsheet will not show a backdrop.
  *   - `escapeToClose` - `{boolean=}`: Whether the user can press escape to close the bottom sheet.
  *     Default true.
- *   - `isLockedOpen` - `{boolean=}`: Disables all default ways of closing the bottom sheet. **Note:** this will override
- *     the `clickOutsideToClose` and `escapeToClose` options, leaving only the `hide` and `cancel`
- *     methods as ways of closing the bottom sheet. Defaults to false.
- *   - `resolve` - `{object=}`: Similar to locals, except it takes promises as values
+ *   - `isLockedOpen` - `{boolean=}`: Disables all default ways of closing the bottom sheet.
+ *   **Note:** this will override the `clickOutsideToClose` and `escapeToClose` options, leaving
+ *   only the `hide` and `cancel` methods as ways of closing the bottom sheet. Defaults to false.
+ *   - `resolve` - `{Object=}`: Similar to locals, except it takes promises as values
  *   and the bottom sheet will not open until the promises resolve.
  *   - `controllerAs` - `{string=}`: An alias to assign the controller to on the scope.
- *   - `parent` - `{element=}`: The element to append the bottom sheet to. The `parent` may be a `function`, `string`,
- *   `object`, or null. Defaults to appending to the body of the root element (or the root element) of the application.
+ *   - `parent` - `{element=}`: The element to append the bottom sheet to. The `parent` may be a
+ *   `function`, `string`, `Object`, or null. Defaults to appending to the body of the root element
+ *   (or the root element) of the application.
  *   e.g. angular.element(document.getElementById('content')) or "#content"
- *   - `disableParentScroll` - `{boolean=}`: Whether to disable scrolling while the bottom sheet is open.
- *     Default true.
+ *   - `disableParentScroll` - `{boolean=}`: Whether to disable scrolling while the bottom sheet is
+ *   open. Default true.
  *
  * @returns {promise} A promise that can be resolved with `$mdBottomSheet.hide()` or
  * rejected with `$mdBottomSheet.cancel()`.
@@ -138,7 +171,7 @@ function MdBottomSheetDirective($mdBottomSheet) {
  *
  * @description
  * Hide the existing bottom sheet and resolve the promise returned from
- * `$mdBottomSheet.show()`. This call will close the most recently opened/current bottomsheet (if
+ * `$mdBottomSheet.show()`. This call will close the most recently opened/current bottom sheet (if
  * any).
  *
  * <em><b>Note:</b> Use a `.then()` on your `.show()` to handle this callback.</em>
@@ -188,9 +221,7 @@ function MdBottomSheetProvider($$interimElementProvider) {
       isLockedOpen: false
     };
 
-
-    function onShow(scope, element, options, controller) {
-
+    function onShow(scope, element, options) {
       element = $mdUtil.extractElementByName(element, 'md-bottom-sheet');
 
       // prevent tab focus or click focus on the bottom-sheet container
@@ -200,7 +231,7 @@ function MdBottomSheetProvider($$interimElementProvider) {
       // This is a very common problem, so we have to notify the developer about this.
       if (element.hasClass('ng-cloak')) {
         var message = '$mdBottomSheet: using `<md-bottom-sheet ng-cloak>` will affect the bottom-sheet opening animations.';
-        $log.warn( message, element[0] );
+        $log.warn(message, element[0]);
       }
 
       if (options.isLockedOpen) {
@@ -214,14 +245,14 @@ function MdBottomSheetProvider($$interimElementProvider) {
         // Add a backdrop that will close on click
         backdrop = $mdUtil.createBackdrop(scope, "md-bottom-sheet-backdrop md-opaque");
 
-        // Prevent mouse focus on backdrop; ONLY programatic focus allowed.
-        // This allows clicks on backdrop to propogate to the $rootElement and
+        // Prevent mouse focus on backdrop; ONLY programmatic focus allowed.
+        // This allows clicks on backdrop to propagate to the $rootElement and
         // ESC key events to be detected properly.
         backdrop[0].tabIndex = -1;
 
         if (options.clickOutsideToClose) {
           backdrop.on('click', function() {
-            $mdUtil.nextTick($mdBottomSheet.cancel,true);
+            $mdUtil.nextTick($mdBottomSheet.cancel, true);
           });
         }
 
@@ -247,7 +278,7 @@ function MdBottomSheetProvider($$interimElementProvider) {
           if (options.escapeToClose) {
             options.rootElementKeyupCallback = function(e) {
               if (e.keyCode === $mdConstant.KEY_CODE.ESCAPE) {
-                $mdUtil.nextTick($mdBottomSheet.cancel,true);
+                $mdUtil.nextTick($mdBottomSheet.cancel, true);
               }
             };
 
@@ -273,6 +304,10 @@ function MdBottomSheetProvider($$interimElementProvider) {
 
     /**
      * Adds the drag gestures to the bottom sheet.
+     * @param {JQLite} element where CSS transitions will be applied
+     * @param {JQLite} parent used for registering gesture listeners
+     * @return {Function} function that removes gesture listeners that were set up by
+     *  registerGestures()
      */
     function registerGestures(element, parent) {
       var deregister = $mdGesture.register(parent, 'drag', { horizontal: false });
@@ -307,14 +342,12 @@ function MdBottomSheetProvider($$interimElementProvider) {
           var distanceRemaining = element.prop('offsetHeight') - ev.pointer.distanceY;
           var transitionDuration = Math.min(distanceRemaining / ev.pointer.velocityY * 0.75, 500);
           element.css($mdConstant.CSS.TRANSITION_DURATION, transitionDuration + 'ms');
-          $mdUtil.nextTick($mdBottomSheet.cancel,true);
+          $mdUtil.nextTick($mdBottomSheet.cancel, true);
         } else {
           element.css($mdConstant.CSS.TRANSITION_DURATION, '');
           element.css($mdConstant.CSS.TRANSFORM, '');
         }
       }
     }
-
   }
-
 }

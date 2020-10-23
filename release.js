@@ -6,26 +6,32 @@
   const strip          = require('cli-color/strip');
   const fs             = require('fs');
   const path           = require('path');
-  const prompt         = require('prompt-sync');
+  const prompt         = require('prompt-sync')({sigint: true});
   const child_process  = require('child_process');
   const pkg            = require('./package.json');
+  const pkgLock        = require('./package-lock.json');
   let oldVersion       = pkg.version;
-  const abortCmds      = [ 'git reset --hard', 'git checkout staging', 'rm abort push' ];
-  const pushCmds       = [ 'rm abort push' ];
+  const abortCmds      = ['git reset --hard', 'git checkout staging', 'rm abort push'];
+  const pushCmds       = ['rm abort push'];
   const cleanupCmds    = [];
   const defaultOptions = { encoding: 'utf-8' };
   const origin         = 'git@github.com:angular/material.git';
   const lineWidth      = 80;
   const lastMajorVer   = JSON.parse(exec('curl https://material.angularjs.org/docs.json')).latest;
   let newVersion;
+  let npmTag = 'latest';
 
+  try {
+    child_process.execSync('gulp --version', defaultOptions);
+  } catch (error) {
+    throw new Error('Please install gulp globally via "npm i -g gulp@^3.9.1".');
+  }
   header();
-  write(`Is this a dry-run? ${"[yes/no]".cyan} `);
-  const dryRun = prompt() !== 'no';
+  const dryRun = prompt(`Is this a dry-run? [${"yes".cyan}/no] `, 'yes') !== 'no';
+  npmTag = prompt(`What would you like the NPM tag to be? [${npmTag.cyan}/next] `, npmTag);
 
   if (dryRun) {
-    write(`What would you like the old version to be? (default: ${oldVersion.cyan}) `);
-    oldVersion = prompt() || oldVersion;
+    oldVersion = prompt(`What would you like the old version to be? (default: ${oldVersion.cyan}) `, oldVersion);
     build();
   } else if (validate()) {
     build();
@@ -52,16 +58,16 @@
     line();
     log('Your repo is ready to be pushed.');
     log(`Please look over ${"CHANGELOG.md".cyan} and make any changes.`);
-    log(`When you are ready, please run "${"./push".cyan}" to finish the process.`);
-    log('If you would like to cancel this release, please run "./abort"');
+    log(`When you are ready, please run "${"./push".green}" to finish the process.`);
+    log(`If you would like to cancel this release, please run "${"./abort".red}"`);
   }
 
-  //-- utility methods
+  // utility methods
 
   /** confirms that you will be able to perform the release before attempting */
   function validate () {
-    if (exec('npm whoami') !== 'angularcore') {
-      err('You must be authenticated with npm as "angularcore" to perform a release.');
+    if (exec('npm whoami') !== 'angular') {
+      err('You must be authenticated with npm as "angular" to perform a release.');
     } else if (exec('git rev-parse --abbrev-ref HEAD') !== 'staging') {
       err('Releases can only performed from "staging" at this time.');
     } else {
@@ -81,14 +87,20 @@
     abortCmds.push(`git branch -D release/${newVersion}`);
   }
 
-  /** writes the new version to package.json */
+  /** writes the new version to package.json and package-lock.json */
   function updateVersion () {
     start(`Updating ${"package.json".cyan} version from ${oldVersion.cyan} to ${newVersion.cyan}...`);
     pkg.version = newVersion;
     fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
     done();
+    start(`Updating ${"package-lock.json".cyan} version from ${oldVersion.cyan} to ${newVersion.cyan}...`);
+    pkgLock.version = newVersion;
+    fs.writeFileSync('./package-lock.json', JSON.stringify(pkgLock, null, 2));
+    done();
     abortCmds.push('git checkout package.json');
+    abortCmds.push('git checkout package-lock.json');
     pushCmds.push('git add package.json');
+    pushCmds.push('git add package-lock.json');
   }
 
   /** generates the changelog from the commits since the last release */
@@ -96,7 +108,7 @@
     start(`Generating changelog from ${oldVersion.cyan} to ${newVersion.cyan}...`);
 
     exec(`git fetch --tags ${origin}`);
-    exec(`git checkout v${lastMajorVer} -- CHANGELOG.md`);
+    exec(`git checkout CHANGELOG.md`);
     exec(`gulp changelog --sha=$(git merge-base v${lastMajorVer} HEAD)`);
 
     done();
@@ -120,8 +132,7 @@
     log('What should the next version be?');
     for (key in options) { log((+key + 1) + ') ' + options[ key ].cyan); }
     log('');
-    write('Please select a new version: ');
-    const type = prompt();
+    const type = prompt('Please select a new version: ');
 
     if (options[ type - 1 ]) version = options[ type - 1 ];
     else if (type.match(/^\d+\.\d+\.\d+(-rc\.?\d+)?$/)) version = type;
@@ -129,13 +140,12 @@
 
     log('');
     log('The new version will be ' + version.cyan + '.');
-    write(`Is this correct? ${"[yes/no]".cyan} `);
-    return prompt() === 'yes' ? version : getNewVersion();
+    return prompt(`Is this correct? [${"yes".cyan}/no] `, 'yes') === 'yes' ? version : getNewVersion();
 
     function getVersionOptions (version) {
       return version.match(/-rc\.?\d+$/)
-          ? [ increment(version, 'rc'), increment(version, 'minor') ]
-          : [ increment(version, 'patch'), addRC(increment(version, 'minor')) ];
+        ? [increment(version, 'rc'), increment(version, 'minor')]
+        : [increment(version, 'patch'), addRC(increment(version, 'minor'))];
 
       function increment (versionString, type) {
         const version = parseVersion(versionString);
@@ -146,7 +156,7 @@
           }
         } else {
           version[ type ]++;
-          //-- reset any version numbers lower than the one changed
+          // reset any version numbers lower than the one changed
           switch (type) {
             case 'minor': version.patch = 0;
             case 'patch': version.rc = 0;
@@ -178,26 +188,26 @@
     }
   }
 
-  /** adds git tag for release and pushes to github */
+  /** adds git tag for release and pushes to GitHub */
   function tagRelease () {
     pushCmds.push(
-        `git tag v${newVersion} -f`,
-        `git push ${origin} HEAD`,
-        `git push --tags ${origin}`
+      `git tag v${newVersion} -f`,
+      `git push ${origin} HEAD`,
+      `git push --tags ${origin}`
     );
   }
 
   /** amends the commit to include local changes (ie. changelog) */
   function commitChanges () {
     start('Committing changes...');
-    exec(`git commit -am "release: version ${newVersion}"`);
+    exec(`git commit -am "release: v${newVersion}"`);
     done();
     pushCmds.push('git commit --amend --no-edit');
   }
 
-  /** utility method for cloning github repos */
+  /** utility method for cloning GitHub repos */
   function cloneRepo (repo) {
-    start(`Cloning ${repo.cyan} from Github...`);
+    start(`Cloning ${repo.cyan} from GitHub...`);
     exec(`rm -rf ${repo}`);
     exec(`git clone git@github.com:angular/${repo}.git --depth=1`);
     done();
@@ -212,37 +222,37 @@
 
   /** updates the version for bower-material in package.json and bower.json */
   function updateBowerVersion () {
-    start('Updating bower version...');
+    start(`Updating ${"bower-material".cyan} version...`);
     const options = { cwd: './bower-material' };
     const bower   = require(options.cwd + '/bower.json'),
           pkg     = require(options.cwd + '/package.json');
-    //-- update versions in config files
+    // update versions in config files
     bower.version = pkg.version = newVersion;
     fs.writeFileSync(options.cwd + '/package.json', JSON.stringify(pkg, null, 2));
     fs.writeFileSync(options.cwd + '/bower.json', JSON.stringify(bower, null, 2));
     done();
-    start('Building bower files...');
-    //-- build files for bower
+    start(`Building ${"bower-material".cyan} files...`);
+    // build files for bower
     exec([
       'rm -rf dist',
       'gulp build',
       'gulp build-all-modules --mode=default',
       'gulp build-all-modules --mode=closure',
       'rm -rf dist/demos'
-     ]);
+    ]);
     done();
-    start('Copy files into bower repo...');
-    //-- copy files over to bower repo
+    start(`Copying files into ${"bower-material".cyan} repo...`);
+    // copy files over to bower repo
     exec([
-           'cp -Rf ../dist/* ./',
-           'git add -A',
-           `git commit -m "release: version ${newVersion}"`,
-           'rm -rf ../dist'
-         ], options);
+      'cp -Rf ../dist/* ./',
+      'git add -A',
+      `git commit -am "release: v${newVersion}"`,
+      'rm -rf ../dist'
+    ], options);
     done();
-    //-- add steps to push script
+    // add steps to push script
     pushCmds.push(
-      comment('push to bower (master and tag) and publish to npm'),
+      comment(`push to bower-material (master and tag) and publish to npm as '${npmTag}'`),
       'cd ' + options.cwd,
       'cp ../CHANGELOG.md .',
       'git add CHANGELOG.md',
@@ -251,7 +261,8 @@
       'git pull --rebase --strategy=ours',
       'git push',
       'git push --tags',
-      'npm publish',
+      'rm -rf .git/',
+      `npm publish --tag ${npmTag}`,
       'cd ..'
     );
   }
@@ -262,36 +273,38 @@
     const options = { cwd: './code.material.angularjs.org' };
     writeDocsJson();
 
-    //-- build files for bower
+    // build files for bower
     exec([
-        'rm -rf dist',
-        'gulp docs'
+      'rm -rf dist',
+      'gulp docs'
     ]);
     replaceFilePaths();
 
-    //-- copy files over to site repo
+    // copy files over to site repo
     exec([
-        `cp -Rf ../dist/docs ${newVersion}`,
-        'rm -rf latest && cp -Rf ../dist/docs latest',
-        'git add -A',
-        `git commit -m "release: version ${newVersion}"`,
-        'rm -rf ../dist'
+      `cp -Rf ../dist/docs ${newVersion}`,
+      'rm -rf latest && cp -Rf ../dist/docs latest',
+      'git add -A',
+      `git commit -am "release: v${newVersion}"`,
+      `git tag -f v${newVersion}`,
+      'rm -rf ../dist'
     ], options);
     replaceBaseHref(newVersion);
     replaceBaseHref('latest');
 
-    //-- update firebase.json file
+    // update firebase.json file
     updateFirebaseJson();
-    exec([ 'git commit --amend --no-edit -a' ], options);
+    exec(['git commit --amend --no-edit -a'], options);
     done();
 
-    //-- add steps to push script
+    // add steps to push script
     pushCmds.push(
-        comment('push the site'),
-        'cd ' + options.cwd,
-        'git pull --rebase --strategy=ours',
-        'git push',
-        'cd ..'
+      comment('push the site'),
+      'cd ' + options.cwd,
+      'git pull --rebase --strategy=ours',
+      'git push',
+      'git push --tags',
+      'cd ..'
     );
 
     function updateFirebaseJson () {
@@ -323,7 +336,7 @@
       const config = require(options.cwd + '/docs.json');
       config.versions.unshift(newVersion);
 
-      //-- only set to default if not a release candidate
+      // only set to default if not a release candidate
       config.latest = newVersion;
       fs.writeFileSync(options.cwd + '/docs.json', JSON.stringify(config, null, 2));
     }
@@ -331,18 +344,18 @@
 
   /** replaces localhost file paths with public URLs */
   function replaceFilePaths () {
-    //-- handle docs.js
+    // handle docs.js
     const filePath = path.join(__dirname, '/dist/docs/docs.js');
     const file = fs.readFileSync(filePath);
     const contents = file.toString()
-        .replace(/http:\/\/localhost:8080\/angular-material/g, 'https://cdn.gitcdn.link/cdn/angular/bower-material/v' + newVersion + '/angular-material')
+        .replace(/http:\/\/localhost:8080\/angular-material/g, 'https://gitcdn.xyz/cdn/angular/bower-material/v' + newVersion + '/angular-material')
         .replace(/http:\/\/localhost:8080\/docs.css/g, 'https://material.angularjs.org/' + newVersion + '/docs.css');
     fs.writeFileSync(filePath, contents);
   }
 
   /** replaces base href in index.html for new version as well as latest */
   function replaceBaseHref (folder) {
-    //-- handle index.html
+    // handle index.html
     const filePath = path.join(__dirname, '/code.material.angularjs.org/', folder, '/index.html');
     const file = fs.readFileSync(filePath);
     const contents = file.toString().replace(/base href="\//g, 'base href="/' + folder + '/');
@@ -352,15 +365,15 @@
   /** copies the changelog back over to master branch */
   function updateMaster () {
     pushCmds.push(
-        comment('update package.json in master'),
-        'git checkout master',
-        `git pull --rebase ${origin} master --strategy=theirs`,
-        `git checkout release/${newVersion} -- CHANGELOG.md`,
-        `node -e "const newVersion = '${newVersion}'; ${stringifyFunction(buildCommand)}"`,
-        'git add CHANGELOG.md',
-        'git add package.json',
-        `git commit -m "update version number in package.json to ${newVersion}"`,
-        `git push ${origin} master`
+      comment('update package.json in master'),
+      'git checkout master',
+      `git pull --rebase ${origin} master --strategy=recursive --strategy-option==theirs`,
+      `git checkout release/${newVersion} -- CHANGELOG.md`,
+      `node -e "const newVersion = '${newVersion}'; ${stringifyFunction(buildCommand)}"`,
+      'git add CHANGELOG.md',
+      'git add package.json',
+      `git commit -m "update version number in package.json to ${newVersion}"`,
+      `git push ${origin} master`
     );
 
     function buildCommand () {
@@ -404,7 +417,12 @@
     log('done'.green);
   }
 
-  /** utility method for executing terminal commands */
+  /**
+   * utility method for executing terminal commands while ignoring stderr
+   * @param {string|Array} cmd
+   * @param {Object=} userOptions
+   * @return
+   */
   function exec (cmd, userOptions) {
     if (cmd instanceof Array) {
       return cmd.map(function (cmd) { return exec(cmd, userOptions); });

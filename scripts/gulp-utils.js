@@ -1,7 +1,8 @@
 const gulp = require('gulp');
 const through2 = require('through2');
 const gutil = require('gulp-util');
-const autoprefixer = require('gulp-autoprefixer');
+const autoprefixer = require('autoprefixer');
+const gulpPostcss = require('gulp-postcss');
 const Buffer = require('buffer').Buffer;
 const fs = require('fs');
 const path = require('path');
@@ -26,9 +27,9 @@ exports.humanizeCamelCase = function(str) {
  */
 exports.copyDemoAssets = function(component, srcDir, distDir) {
   gulp.src(srcDir + component + '/demo*/')
-      .pipe(through2.obj( copyAssetsFor ));
+      .pipe(through2.obj(copyAssetsFor));
 
-  function copyAssetsFor( demo, enc, next){
+  function copyAssetsFor(demo, enc, next){
     const demoID = component + "/" + path.basename(demo.path);
     const demoDir = demo.path + "/**/*";
 
@@ -112,6 +113,10 @@ exports.pathsForModule = function(name) {
   }
 };
 
+/**
+ * @param {string} name module name
+ * @returns {*}
+ */
 exports.filesForModule = function(name) {
   if (pathsForModules[name]) {
     return srcFiles(pathsForModules[name]);
@@ -267,7 +272,7 @@ exports.hoistScssVariables = function() {
     let closeCount = 0;
     let openBlock = false;
 
-    for(let currentLine = 0; currentLine < contents.length; ++currentLine) {
+    for (let currentLine = 0; currentLine < contents.length; ++currentLine) {
       const line = contents[currentLine];
 
       if (openBlock || /^\s*\$/.test(line) && !/^\s+/.test(line)) {
@@ -305,13 +310,11 @@ exports.cssToNgConstant = function(ngModule, factoryName) {
   });
 };
 
+/**
+ * Use the configuration in the "browserslist" field of the package.json as recommended
+ * by the autoprefixer docs.
+ * @returns {NodeJS.ReadWriteStream | *}
+ */
 exports.autoprefix = function() {
-
-  return autoprefixer({browsers: [
-    'last 2 versions',
-    'not ie <= 10',
-    'not ie_mob <= 10',
-    'last 4 Android versions',
-    'Safari >= 8'
-  ]});
+  return gulpPostcss([autoprefixer()]);
 };
