@@ -321,7 +321,9 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       input: $element.find('input')[0],
       wrap:  snapWrap.wrap,
       snap:  snapWrap.snap,
-      root:  document.body,
+      get root() {
+        return $element[0].ownerDocument.body;
+      }
     };
 
     elements.li   = elements.ul.getElementsByTagName('li');
